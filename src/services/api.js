@@ -2,7 +2,8 @@
 // Connects to Express + MongoDB backend with automatic proxy or environment URL,
 // timeout detection, and fallback handling for network interruptions.
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const rawBase = (import.meta.env.VITE_API_URL || '/api').trim().replace(/\/$/, '');
+const API_BASE = rawBase.startsWith('http') && !rawBase.endsWith('/api') ? `${rawBase}/api` : rawBase;
 const TIMEOUT_MS = 15000;
 
 class ApiError extends Error {

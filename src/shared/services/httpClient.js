@@ -1,6 +1,7 @@
 // Shared HTTP Client with robust error handling and timeout support
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const rawBase = (import.meta.env.VITE_API_URL || '/api').trim().replace(/\/$/, '');
+const API_BASE = rawBase.startsWith('http') && !rawBase.endsWith('/api') ? `${rawBase}/api` : rawBase;
 const TIMEOUT_MS = 25000;
 
 export class ApiError extends Error {
