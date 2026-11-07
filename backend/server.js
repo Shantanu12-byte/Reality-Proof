@@ -43,10 +43,16 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      // Allow if explicitly configured, in development, or coming from any Vercel deployment
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        process.env.NODE_ENV !== 'production' ||
+        origin.endsWith('.vercel.app') ||
+        (process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL.replace(/\/$/, '')))
+      ) {
         return callback(null, true);
       }
-      return callback(new Error('CORS policy: Not allowed by origin'));
+      return callback(new Error(`CORS policy: Origin ${origin} not allowed`));
     },
     credentials: true,
   })
