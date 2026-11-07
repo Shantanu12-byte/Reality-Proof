@@ -1,0 +1,38 @@
+{
+  "name": "realityproof-backend",
+  "version": "1.0.0",
+  "description": "RealityProof Full-Stack Backend API with Express, MongoDB, and Mongoose",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed/seedData.js",
+    "test:rbac": "node test-role-access.js",
+    "test:worker": "node test-worker-portal.js",
+    "test:phase4": "node test-phase4-verification.js",
+    "test:phase6": "node test-phase6-paypal.js"
+  },
+  "keywords": [
+    "realityproof",
+    "express",
+    "mongodb",
+    "mongoose"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^3.0.0",
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exifr": "^7.1.3",
+    "express": "^4.21.2",
+    "groq-sdk": "^1.6.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.9.2",
+    "multer": "^2.5.0",
+    "sharp": "^0.35.5"
+  }
+}
