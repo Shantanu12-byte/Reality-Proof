@@ -27,7 +27,11 @@ import {
   Check,
   X,
   RefreshCw,
-  Info
+  Info,
+  FileText,
+  User,
+  ChevronLeft,
+  Download
 } from 'lucide-react';
 import { useTaskContext } from '@/context/TaskContext';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -56,6 +60,10 @@ export const AIVerificationPage = () => {
   const [modalImageFile, setModalImageFile] = useState(null);
   const [modalImagePreview, setModalImagePreview] = useState('');
   const [modalImageUrl, setModalImageUrl] = useState('');
+
+  // Photo gallery and fullscreen lightbox state
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // Fetch verifications from backend
   const loadVerifications = useCallback(async () => {
@@ -194,6 +202,25 @@ export const AIVerificationPage = () => {
   const activeTask = selectedVerification
     ? tasks.find((t) => (t.taskId || t.id) === selectedVerification.taskId)
     : null;
+
+  useEffect(() => {
+    setSelectedPhotoIndex(0);
+  }, [selectedVerification?._id]);
+
+  // Aggregate all submitted photos from verification and active task
+  const evidencePhotos = React.useMemo(() => {
+    if (!selectedVerification) return [];
+    const list = [
+      ...(Array.isArray(selectedVerification.evidenceThumbnails) ? selectedVerification.evidenceThumbnails : []),
+      ...(Array.isArray(selectedVerification.evidenceIds) ? selectedVerification.evidenceIds : []),
+      ...(Array.isArray(activeTask?.evidenceThumbnails) ? activeTask.evidenceThumbnails : []),
+    ];
+    return [...new Set(list)].filter(
+      (url) => typeof url === 'string' && url.trim().length > 0
+    );
+  }, [selectedVerification, activeTask]);
+
+  const currentPhotoUrl = evidencePhotos[selectedPhotoIndex] || evidencePhotos[0] || '';
 
   const isMockProvider = selectedVerification?.isMock ?? false;
 
@@ -579,24 +606,127 @@ export const AIVerificationPage = () => {
                 </div>
               </div>
 
+              {/* Task Instructions & Assignment Directive Card */}
+              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm space-y-4 transition-all duration-300 hover:border-blue-500/40 hover:shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-sans text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                        <span>Original Task Instructions & Assignment Directive</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Operational requirements and instructions given to the field specialist while creating/assigning this task.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200 self-start sm:self-auto">
+                    {activeTask?.category || 'Field Inspection'}
+                  </span>
+                </div>
+
+                {/* Instructions Text */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 leading-relaxed">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 font-mono">
+                    Operational Briefing:
+                  </div>
+                  {activeTask?.description ? (
+                    <p className="text-slate-800 font-medium whitespace-pre-line leading-relaxed">{activeTask.description}</p>
+                  ) : (
+                    <p className="text-slate-500 italic">Standard inspection guidelines. Capture in-situ proof matching checklist criteria.</p>
+                  )}
+                </div>
+
+                {/* Assignment & Geofence Telemetry */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Target Location</span>
+                    <span className="font-bold text-slate-900 truncate block mt-0.5">
+                      {activeTask?.location || selectedVerification?.metadataFindings?.locationStatus || 'Pune Sector'}
+                    </span>
+                    {activeTask?.address && (
+                      <span className="text-[10px] text-slate-500 truncate block">{activeTask.address}</span>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Assigned Specialist</span>
+                    <span className="font-bold text-blue-700 truncate block mt-0.5">
+                      {activeTask?.assignedWorker?.name || (typeof activeTask?.assignedWorker === 'string' ? activeTask.assignedWorker : 'Field Specialist')}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono block">
+                      {activeTask?.assignedWorker?.workerId || 'Active'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Escrow Budget</span>
+                    <span className="font-bold text-emerald-700 block mt-0.5">
+                      ${typeof activeTask?.budget === 'number' ? activeTask.budget.toFixed(2) : activeTask?.budget || '40.00'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block">Funds Held</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Required Criteria</span>
+                    <span className="font-bold text-slate-900 block mt-0.5">
+                      {activeTask?.evidenceRequirements?.length || selectedVerification?.requirementResults?.length || 0} Configured
+                    </span>
+                    <span className="text-[10px] text-blue-600 font-semibold block">AI Verified</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Two Column Layout: Evidence Image & Metadata VS AI Findings */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Visual Evidence & EXIF Inspector */}
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm space-y-4 transition-all duration-300 hover:border-blue-500/40">
-                    <h4 className="font-sans text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-blue-600" />
-                      Submitted Photographic Asset
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-sans text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-blue-600" />
+                        <span>Submitted Photographic Evidence</span>
+                        {evidencePhotos.length > 1 && (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                            {selectedPhotoIndex + 1} of {evidencePhotos.length}
+                          </span>
+                        )}
+                      </h4>
+                      {currentPhotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setIsLightboxOpen(true)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-lg hover:bg-blue-50 cursor-pointer"
+                          title="Open Fullscreen Lightbox"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Inspect HD</span>
+                        </button>
+                      )}
+                    </div>
 
-                    {/* Image Preview */}
+                    {/* Image Preview with Zoom Interaction */}
                     <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 aspect-video flex items-center justify-center group shadow-xs">
-                      {selectedVerification.evidenceThumbnails?.[0] || selectedVerification.evidenceIds?.[0] ? (
-                        <img
-                          src={selectedVerification.evidenceThumbnails?.[0] || selectedVerification.evidenceIds?.[0]}
-                          alt="Submitted Evidence"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      {currentPhotoUrl ? (
+                        <>
+                          <img
+                            src={currentPhotoUrl}
+                            alt="Submitted Evidence"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                            onClick={() => setIsLightboxOpen(true)}
+                          />
+                          <div
+                            onClick={() => setIsLightboxOpen(true)}
+                            className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                          >
+                            <span className="px-3 py-1.5 rounded-xl bg-white/95 text-slate-900 text-xs font-bold shadow-lg flex items-center gap-1.5 backdrop-blur-xs">
+                              <Maximize2 className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Click to Inspect High Resolution</span>
+                            </span>
+                          </div>
+                        </>
                       ) : (
                         <div className="text-slate-400 text-xs flex flex-col items-center">
                           <FileImage className="w-8 h-8 mb-1" />
@@ -604,6 +734,41 @@ export const AIVerificationPage = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Multi-Photo Thumbnail Gallery Strip */}
+                    {evidencePhotos.length > 1 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                          All Submitted Proof Assets ({evidencePhotos.length}):
+                        </span>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {evidencePhotos.map((photo, pIdx) => {
+                            const isCurrent = (selectedPhotoIndex || 0) === pIdx;
+                            return (
+                              <button
+                                key={pIdx}
+                                type="button"
+                                onClick={() => setSelectedPhotoIndex(pIdx)}
+                                className={`relative rounded-lg overflow-hidden border-2 w-14 h-14 shrink-0 transition-all cursor-pointer ${
+                                  isCurrent
+                                    ? 'border-blue-600 ring-2 ring-blue-500/30 scale-105 shadow-xs'
+                                    : 'border-slate-200 hover:border-blue-400 opacity-70 hover:opacity-100'
+                                }`}
+                              >
+                                <img
+                                  src={photo}
+                                  alt={`Evidence #${pIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <span className="absolute bottom-0 right-0 bg-slate-900/80 text-white font-mono text-[9px] px-1 rounded-tl font-bold">
+                                  #{pIdx + 1}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Extracted Metadata Grid */}
                     <div className="space-y-2 text-xs">
@@ -1030,6 +1195,54 @@ export const AIVerificationPage = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal: High-Res Evidence Inspection */}
+      {isLightboxOpen && currentPhotoUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div
+            className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-3 text-white">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-bold font-mono">
+                  {selectedVerification?.taskId} — Evidence Asset {selectedPhotoIndex + 1} of {evidencePhotos.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={currentPhotoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Raw File</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(false)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative w-full max-h-[80vh] flex items-center justify-center overflow-hidden rounded-2xl bg-black border border-white/10 shadow-2xl">
+              <img
+                src={currentPhotoUrl}
+                alt="High-Res Evidence Inspection"
+                className="max-h-[78vh] w-auto max-w-full object-contain rounded-xl"
+              />
             </div>
           </div>
         </div>
